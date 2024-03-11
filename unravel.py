@@ -24,6 +24,7 @@ class UnravelApp(App):
                     validators=[
                         URL("Please enter a valid URL"),
                     ],
+                    valid_empty=True,
                 )
                 yield Label("", id="app__input__error", classes="hide")
 
@@ -41,9 +42,8 @@ class UnravelApp(App):
 
         error_message_el = self.query_one("#app__input__error")
 
-        # Updating the UI to show the reasons why validation failed
-        if not event.validation_result.is_valid:
-            error_message_el.update(event.validation_result.failure_descriptions[0])
+        if event.validation_result is not None and not event.validation_result.is_valid:
+            error_message_el.update(", ".join(event.validation_result.failure_descriptions))
             error_message_el.remove_class("hide")
         else:
             error_message_el.update("")
@@ -51,7 +51,7 @@ class UnravelApp(App):
 
     @on(Input.Submitted)
     def on_submit(self, event: Input.Submitted) -> None:
-        if not event.validation_result.is_valid:
+        if event.validation_result is None or not event.validation_result.is_valid:
             return
 
         url = event.value
