@@ -28,7 +28,7 @@ class UnravelApp(App):
                 )
                 yield Label("", id="app__input__error", classes="hide")
 
-            with Container(id="app__output"):
+            with Container(id="app__output", classes="hide"):
                 with VerticalScroll(id="tree-pane"):
                     yield Tree("", id="tree")
 
@@ -37,6 +37,9 @@ class UnravelApp(App):
 
     @on(Input.Changed)
     def on_input_change(self, event: Input.Changed) -> None:
+        output_el = self.query_one("#app__output")
+        output_el.add_class("hide")
+
         error_message_el = self.query_one("#app__input__error")
 
         # Updating the UI to show the reasons why validation failed
@@ -88,6 +91,9 @@ class UnravelApp(App):
                     seen_nodes[path] = parent_node.add(part, node_data)
 
                 parent_node = seen_nodes[path]
+
+        output_el = self.query_one("#app__output")
+        output_el.remove_class("hide")
 
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
