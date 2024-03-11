@@ -15,7 +15,8 @@ class UnravelApp(App):
     SUB_TITLE = "A simple web page unraveler"
     CSS_PATH = "styles.tcss"
     BINDINGS = [
-        Binding(key="N", action="new_search", description="New Search"),
+        Binding(key="q", action="quit", description="Quit"),
+        Binding(key="n", action="new_search", description="New Search"),
     ]
 
     def compose(self) -> ComposeResult:
