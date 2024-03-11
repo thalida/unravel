@@ -17,7 +17,7 @@ rich = "^13.7.1"
 textual-dev = "^1.5.1"
 
 [tool.poetry.scripts]
-unravel = 'unravel:main'
+unravel = 'main:run'
 
 [tool.ruff]
 line-length = 119

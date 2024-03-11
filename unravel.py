@@ -6,10 +6,12 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.validation import URL
 from textual.containers import Container, VerticalScroll
-from textual.widgets import Label, Input, Tree, Header, MarkdownViewer, Markdown
+from textual.widgets import Label, Input, Tree, Header, Markdown
 
 
 class UnravelApp(App):
+    TITLE = "Unravel"
+    SUB_TITLE = "A simple web page unraveler"
     CSS_PATH = "styles.tcss"
 
     def compose(self) -> ComposeResult:
@@ -54,7 +56,7 @@ class UnravelApp(App):
         page = requests.get(url)
         selector = parsel.Selector(page.text)
 
-        all_urls = selector.css("script::attr(src), link::attr(href)").extract()
+        all_urls = selector.css("script::attr(src), link[rel=stylesheet]::attr(href)").extract()
         external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
 
         tree = self.query_one("#tree")
@@ -99,14 +101,3 @@ class UnravelApp(App):
         """)
 
         node_el.update(markdown)
-
-
-app = UnravelApp()
-
-
-def main():
-    app.run()
-
-
-if __name__ == "__main__":
-    main()
