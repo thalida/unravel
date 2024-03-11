@@ -78,17 +78,17 @@ class UnravelApp(App):
         error_message_el.update(", ".join(event.validation_result.failure_descriptions))
         error_message_el.remove_class("hide")
 
-    @on(Switch.Changed)
-    def on_switch_change(self, event: Switch.Changed) -> None:
-        self.include_links = event.value
-        self.do_unravel()
-
     @on(Input.Submitted)
     def on_submit(self, event: Input.Submitted) -> None:
         if event.validation_result is None or not event.validation_result.is_valid:
             return
 
         self.input_url = event.value
+        self.do_unravel()
+
+    @on(Switch.Changed)
+    def on_switch_change(self, event: Switch.Changed) -> None:
+        self.include_links = event.value
         self.do_unravel()
 
     @on(Tree.NodeSelected)
@@ -110,18 +110,13 @@ class UnravelApp(App):
         node_el.update(markdown)
 
     def do_unravel(self) -> None:
-        self.log(f"START Unraveling: {self.input_url} {self.include_links}")
-
         if not self.input_url or len(self.input_url) == 0:
             return
-
-        self.log(f"RUNNING Unraveling: {self.input_url}")
 
         try:
             page = requests.get(self.input_url)
             page.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            self.log(f"Error: {e}")
+        except requests.exceptions.RequestException:
             return
 
         selector = parsel.Selector(page.text)
@@ -185,5 +180,3 @@ class UnravelApp(App):
 
         output_el = self.query_one("#app__output")
         output_el.remove_class("hide")
-
-        self.log(f"FINISHED Unraveling: {self.input_url}")
