@@ -1,9 +1,8 @@
 from unravel import UnravelApp
 
-app = UnravelApp()
-
 
 def run():
+    app = UnravelApp()
     app.run()
 
 

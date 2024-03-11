@@ -9,13 +9,16 @@
 #app {
   height: 100%;
   width: 100%;
+  background: $panel-darken-2;
 }
 
 #app__input {
-  dock: top;
   height: auto;
   padding: 1;
-  background: lightblue;
+}
+
+#app__input>Input {
+  margin-top: 1;
 }
 
 #app__input__error {
@@ -23,32 +26,34 @@
   margin-top: 1;
 }
 
-#tree-pane>Static {
-  background: $boost;
-  color: auto;
-  margin-bottom: 1;
-  padding: 1;
-}
-
-#tree-pane {
-  width: 100%;
-  height: 100%;
-  row-span: 2;
-  background: $panel;
-  border: dodgerblue;
-}
-
-#node-pane {
-  height: 100%;
-  background: $panel;
-  border: greenyellow;
-  padding: 0;
-}
-
 #app__output {
   layout: grid;
   grid-size: 2;
-  /* two columns */
   grid-columns: 1fr;
-  grid-rows: 1fr;
+  padding: 0;
+  margin: 0;
+}
+
+#app__output__tree_pane {
+  width: 100%;
+  height: 100%;
+  row-span: 2;
+  background: $panel-darken-2;
+  padding-top: 1;
+  padding-bottom: 1;
+  padding-left: 2;
+  padding-right: 2;
+  border-top: tall $panel-darken-1;
+}
+
+#app__output__tree_pane>Tree {
+  background: $panel-darken-2;
+}
+
+#app__output__node_viewer {
+  height: 100%;
+  background: $panel-darken-1;
+  border-top: tall $panel-darken-1;
+  padding: 0;
+  margin: 0;
 }

@@ -19,7 +19,6 @@ class UnravelApp(App):
 
         with Container(id="app"):
             with Container(id="app__input"):
-                yield Label("Enter an URL:")
                 yield Input(
                     placeholder="Enter a url...",
                     validators=[
@@ -29,10 +28,10 @@ class UnravelApp(App):
                 yield Label("", id="app__input__error", classes="hide")
 
             with Container(id="app__output", classes="hide"):
-                with VerticalScroll(id="tree-pane"):
+                with VerticalScroll(id="app__output__tree_pane"):
                     yield Tree("", id="tree")
 
-                with Container(id="node-pane"):
+                with Container(id="app__output__node_viewer"):
                     yield Markdown("", id="node")
 
     @on(Input.Changed)
@@ -63,10 +62,11 @@ class UnravelApp(App):
         external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
 
         tree = self.query_one("#tree")
-        tree.reset(url, {"url": url, "path": url, "part": url, "is_leaf": False})
+        tree.reset(url, {"is_root": True, "source_url": url})
 
         seen_nodes = {}
         for url in external_urls:
+            protocol = url.split("//")[0]
             cleaned_url = url.replace("https://", "").replace("http://", "").replace("//", "")
             url_parts = cleaned_url.split("/")
 
@@ -77,7 +77,8 @@ class UnravelApp(App):
                 is_leaf = i == len(url_parts) - 1
 
                 node_data = {
-                    "url": url,
+                    "source_url": url,
+                    "protocol": f"{protocol}//" if protocol.startswith("http") else "https://",
                     "path": path,
                     "part": part,
                     "is_leaf": is_leaf,
@@ -100,10 +101,17 @@ class UnravelApp(App):
         node = event.node
         node_el = self.query_one("#node")
 
-        markdown = textwrap.dedent(f"""
-        # {node.data["part"]}
+        if node.data.get("is_root", False):
+            markdown = textwrap.dedent(f"""
+            # {self.TITLE}
+            {node.data['source_url']}
+            """)
+        else:
+            node_url = f"{node.data['protocol']}{node.data['path']}"
+            markdown = textwrap.dedent(f"""
+            # {node.data["part"]}
 
-        https://{node.data["path"]}
-        """)
+            {node_url}
+            """)
 
         node_el.update(markdown)
