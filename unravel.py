@@ -1,0 +1,112 @@
+import textwrap
+import parsel
+import requests
+
+from textual import on
+from textual.app import App, ComposeResult
+from textual.validation import URL
+from textual.containers import Container, VerticalScroll
+from textual.widgets import Label, Input, Tree, Header, MarkdownViewer, Markdown
+
+
+class UnravelApp(App):
+    CSS_PATH = "styles.tcss"
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+
+        with Container(id="app"):
+            with Container(id="app__input"):
+                yield Label("Enter an URL:")
+                yield Input(
+                    placeholder="Enter a url...",
+                    validators=[
+                        URL("Please enter a valid URL"),
+                    ],
+                )
+                yield Label("", id="app__input__error", classes="hide")
+
+            with Container(id="app__output"):
+                with VerticalScroll(id="tree-pane"):
+                    yield Tree("", id="tree")
+
+                with Container(id="node-pane"):
+                    yield Markdown("", id="node")
+
+    @on(Input.Changed)
+    def on_input_change(self, event: Input.Changed) -> None:
+        error_message_el = self.query_one("#app__input__error")
+
+        # Updating the UI to show the reasons why validation failed
+        if not event.validation_result.is_valid:
+            error_message_el.update(event.validation_result.failure_descriptions[0])
+            error_message_el.remove_class("hide")
+        else:
+            error_message_el.update("")
+            error_message_el.add_class("hide")
+
+    @on(Input.Submitted)
+    def on_submit(self, event: Input.Submitted) -> None:
+        if not event.validation_result.is_valid:
+            return
+
+        url = event.value
+        page = requests.get(url)
+        selector = parsel.Selector(page.text)
+
+        all_urls = selector.css("script::attr(src), link::attr(href)").extract()
+        external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
+
+        tree = self.query_one("#tree")
+        tree.reset(url, {"url": url, "path": url, "part": url, "is_leaf": False})
+
+        seen_nodes = {}
+        for url in external_urls:
+            cleaned_url = url.replace("https://", "").replace("http://", "").replace("//", "")
+            url_parts = cleaned_url.split("/")
+
+            parent_node = tree.root
+            for i in range(0, len(url_parts)):
+                part = url_parts[i]
+                path = "/".join(url_parts[: i + 1])
+                is_leaf = i == len(url_parts) - 1
+
+                node_data = {
+                    "url": url,
+                    "path": path,
+                    "part": part,
+                    "is_leaf": is_leaf,
+                }
+
+                if is_leaf:
+                    parent_node.add_leaf(part, node_data)
+                    continue
+
+                if path not in seen_nodes.keys():
+                    seen_nodes[path] = parent_node.add(part, node_data)
+
+                parent_node = seen_nodes[path]
+
+    @on(Tree.NodeSelected)
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        node = event.node
+        node_el = self.query_one("#node")
+
+        markdown = textwrap.dedent(f"""
+        # {node.data["part"]}
+
+        https://{node.data["path"]}
+        """)
+
+        node_el.update(markdown)
+
+
+app = UnravelApp()
+
+
+def main():
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

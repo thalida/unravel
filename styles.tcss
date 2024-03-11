@@ -1,0 +1,54 @@
+.hide {
+  display: none;
+}
+
+.show {
+  display: block;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+#app__input {
+  dock: top;
+  height: auto;
+  padding: 1;
+  background: lightblue;
+}
+
+#app__input__error {
+  color: red;
+  margin-top: 1;
+}
+
+#tree-pane>Static {
+  background: $boost;
+  color: auto;
+  margin-bottom: 1;
+  padding: 1;
+}
+
+#tree-pane {
+  width: 100%;
+  height: 100%;
+  row-span: 2;
+  background: $panel;
+  border: dodgerblue;
+}
+
+#node-pane {
+  height: 100%;
+  background: $panel;
+  border: greenyellow;
+  padding: 0;
+}
+
+#app__output {
+  layout: grid;
+  grid-size: 2;
+  /* two columns */
+  grid-columns: 1fr;
+  grid-rows: 1fr;
+}
