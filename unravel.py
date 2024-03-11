@@ -6,8 +6,8 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.validation import URL
-from textual.containers import Container, VerticalScroll
-from textual.widgets import Header, Footer, Input, Label, Tree, Markdown
+from textual.containers import Container, VerticalScroll, Horizontal
+from textual.widgets import Header, Footer, Input, Static, Switch, Label, Tree, Markdown
 
 
 class UnravelApp(App):
@@ -18,6 +18,9 @@ class UnravelApp(App):
         Binding(key="q", action="quit", description="Quit"),
         Binding(key="n", action="new_search", description="New Search"),
     ]
+
+    input_url = ""
+    include_links = False
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -33,6 +36,11 @@ class UnravelApp(App):
                     valid_empty=True,
                 )
                 yield Label("", id="app__input__error", classes="hide")
+                yield Horizontal(
+                    Static("Include Link URLs:", id="app__input__switch-label"),
+                    Switch(id="app__input__switch"),
+                    id="app__input__switch-fieldset",
+                )
 
             with Container(id="app__output", classes="hide"):
                 with VerticalScroll(id="app__output__tree_pane"):
@@ -50,6 +58,7 @@ class UnravelApp(App):
 
     @on(Input.Changed)
     def on_input_change(self, event: Input.Changed) -> None:
+        self.input_url = ""
         output_el = self.query_one("#app__output")
         output_el.add_class("hide")
 
@@ -69,26 +78,64 @@ class UnravelApp(App):
         error_message_el.update(", ".join(event.validation_result.failure_descriptions))
         error_message_el.remove_class("hide")
 
+    @on(Switch.Changed)
+    def on_switch_change(self, event: Switch.Changed) -> None:
+        self.include_links = event.value
+        self.do_unravel()
+
     @on(Input.Submitted)
     def on_submit(self, event: Input.Submitted) -> None:
         if event.validation_result is None or not event.validation_result.is_valid:
             return
 
-        url = event.value
-        page = requests.get(url)
+        self.input_url = event.value
+        self.do_unravel()
+
+    @on(Tree.NodeSelected)
+    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
+        node = event.node
+        node_el = self.query_one("#node")
+
+        if node.data.get("is_root", False):
+            markdown = textwrap.dedent(f"""
+            # {node.data['source_url']}
+            """)
+        else:
+            markdown = textwrap.dedent(f"""
+            # {node.data["part"]}
+
+            {node.data['protocol']}{node.data['path']}
+            """)
+
+        node_el.update(markdown)
+
+    def do_unravel(self) -> None:
+        self.log(f"START Unraveling: {self.input_url} {self.include_links}")
+
+        if not self.input_url or len(self.input_url) == 0:
+            return
+
+        self.log(f"RUNNING Unraveling: {self.input_url}")
+
+        try:
+            page = requests.get(self.input_url)
+            page.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            self.log(f"Error: {e}")
+            return
 
         selector = parsel.Selector(page.text)
 
         head_urls = selector.css("head").re(r"[\"\']((?:http[s]?://|//).+?)[\"\']")
         footer_urls = selector.css("footer").re(r"[\"\']((?:http[s]?://|//).+?)[\"\']")
         page_urls = selector.css("script::attr(src), link[rel=stylesheet]::attr(href)").extract()
+        link_urls = selector.css("a::attr(href)").extract() if self.include_links else []
 
-        all_urls = set(head_urls + footer_urls + page_urls)
-
+        all_urls = set(head_urls + footer_urls + page_urls + link_urls)
         external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
 
         tree = self.query_one("#tree")
-        tree.reset(url, {"is_root": True, "source_url": url})
+        tree.reset(self.input_url, {"is_root": True, "source_url": self.input_url})
 
         seen_nodes = {}
         for url in external_urls:
@@ -134,24 +181,9 @@ class UnravelApp(App):
 
         tree.select_node(tree.root)
         tree.action_select_cursor()
+        tree.root.expand()
 
         output_el = self.query_one("#app__output")
         output_el.remove_class("hide")
 
-    @on(Tree.NodeSelected)
-    def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
-        node = event.node
-        node_el = self.query_one("#node")
-
-        if node.data.get("is_root", False):
-            markdown = textwrap.dedent(f"""
-            # {node.data['source_url']}
-            """)
-        else:
-            markdown = textwrap.dedent(f"""
-            # {node.data["part"]}
-
-            {node.data['protocol']}{node.data['path']}
-            """)
-
-        node_el.update(markdown)
+        self.log(f"FINISHED Unraveling: {self.input_url}")

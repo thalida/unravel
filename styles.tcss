@@ -17,8 +17,35 @@
   padding: 1;
 }
 
-#app__input>Input {
+#app__input__field {
   margin-top: 1;
+}
+
+#app__input__switch-fieldset {
+  height: auto;
+  width: auto;
+  padding-left: 1;
+}
+
+#app__input__switch {
+  height: auto;
+  width: auto;
+  background: $panel-darken-2;
+}
+
+#app__input__switch>.switch--slider {
+  color: $error;
+  background: $panel-lighten-2;
+}
+
+#app__input__switch.-on>.switch--slider {
+  color: $success;
+}
+
+#app__input__switch-label {
+  height: 3;
+  content-align: center middle;
+  width: auto;
 }
 
 #app__input__error {
