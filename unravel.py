@@ -4,15 +4,19 @@ import requests
 
 from textual import on
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.validation import URL
 from textual.containers import Container, VerticalScroll
-from textual.widgets import Label, Input, Tree, Header, Markdown
+from textual.widgets import Header, Footer, Input, Label, Tree, Markdown
 
 
 class UnravelApp(App):
     TITLE = "Unravel"
     SUB_TITLE = "A simple web page unraveler"
     CSS_PATH = "styles.tcss"
+    BINDINGS = [
+        Binding(key="N", action="new_search", description="New Search"),
+    ]
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -20,6 +24,7 @@ class UnravelApp(App):
         with Container(id="app"):
             with Container(id="app__input"):
                 yield Input(
+                    id="app__input__field",
                     placeholder="Enter a url...",
                     validators=[
                         URL("Please enter a valid URL"),
@@ -35,6 +40,13 @@ class UnravelApp(App):
                 with Container(id="app__output__node_viewer"):
                     yield Markdown("", id="node")
 
+        yield Footer()
+
+    def action_new_search(self) -> None:
+        input_el = self.query_one("#app__input__field")
+        input_el.clear()
+        input_el.focus()
+
     @on(Input.Changed)
     def on_input_change(self, event: Input.Changed) -> None:
         output_el = self.query_one("#app__output")
@@ -47,13 +59,14 @@ class UnravelApp(App):
         tree_el.reset("", {})
 
         error_message_el = self.query_one("#app__input__error")
+        error_message_el.update("")
+        error_message_el.add_class("hide")
 
-        if event.validation_result is not None and not event.validation_result.is_valid:
-            error_message_el.update(", ".join(event.validation_result.failure_descriptions))
-            error_message_el.remove_class("hide")
-        else:
-            error_message_el.update("")
-            error_message_el.add_class("hide")
+        if event.validation_result is None or event.validation_result.is_valid:
+            return
+
+        error_message_el.update(", ".join(event.validation_result.failure_descriptions))
+        error_message_el.remove_class("hide")
 
     @on(Input.Submitted)
     def on_submit(self, event: Input.Submitted) -> None:
@@ -99,11 +112,11 @@ class UnravelApp(App):
 
                 parent_node = seen_nodes[path]
 
-        output_el = self.query_one("#app__output")
-        output_el.remove_class("hide")
-
         tree.select_node(tree.root)
         tree.action_select_cursor()
+
+        output_el = self.query_one("#app__output")
+        output_el.remove_class("hide")
 
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
@@ -115,11 +128,10 @@ class UnravelApp(App):
             # {node.data['source_url']}
             """)
         else:
-            node_url = f"{node.data['protocol']}{node.data['path']}"
             markdown = textwrap.dedent(f"""
             # {node.data["part"]}
 
-            {node_url}
+            {node.data['protocol']}{node.data['path']}
             """)
 
         node_el.update(markdown)
