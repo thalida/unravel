@@ -76,10 +76,16 @@ class UnravelApp(App):
 
         url = event.value
         page = requests.get(url)
+
         selector = parsel.Selector(page.text)
 
+        head_urls = selector.css("head").re(r"[\"\']((?:http[s]?://|//).+?)[\"\']")
+        footer_urls = selector.css("footer").re(r"[\"\']((?:http[s]?://|//).+?)[\"\']")
         page_urls = selector.css("script::attr(src), link[rel=stylesheet]::attr(href)").extract()
-        external_urls = [url for url in page_urls if url.startswith("http") or url.startswith("//")]
+
+        all_urls = set(head_urls + footer_urls + page_urls)
+
+        external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
 
         tree = self.query_one("#tree")
         tree.reset(url, {"is_root": True, "source_url": url})
@@ -88,7 +94,7 @@ class UnravelApp(App):
         for url in external_urls:
             protocol = url.split("//")[0]
             cleaned_url = url.replace("https://", "").replace("http://", "").replace("//", "")
-            url_parts = cleaned_url.split("/")
+            url_parts = cleaned_url.strip().rstrip("/").split("/")
 
             parent_node = tree.root
             for i in range(0, len(url_parts)):
@@ -104,13 +110,26 @@ class UnravelApp(App):
                     "is_leaf": is_leaf,
                 }
 
+                already_seen_path = path in seen_nodes.keys()
+
                 if is_leaf:
-                    parent_node.add_leaf(part, node_data)
+                    if not already_seen_path:
+                        seen_nodes[path] = parent_node.add_leaf(part, node_data)
+
                     continue
 
-                if path not in seen_nodes.keys():
-                    seen_nodes[path] = parent_node.add(part, node_data)
+                if already_seen_path:
+                    node_data = seen_nodes[path].data
 
+                    # If we've already seen this path as a leaf node, we need to remove it and add it as a tree node
+                    if node_data.get("is_leaf", False):
+                        seen_nodes[path].remove()
+                        seen_nodes[path] = parent_node.add(part, node_data)
+
+                    parent_node = seen_nodes[path]
+                    continue
+
+                seen_nodes[path] = parent_node.add(part, node_data)
                 parent_node = seen_nodes[path]
 
         tree.select_node(tree.root)
