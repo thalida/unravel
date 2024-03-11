@@ -40,6 +40,12 @@ class UnravelApp(App):
         output_el = self.query_one("#app__output")
         output_el.add_class("hide")
 
+        node_el = self.query_one("#node")
+        node_el.update("")
+
+        tree_el = self.query_one("#tree")
+        tree_el.reset("", {})
+
         error_message_el = self.query_one("#app__input__error")
 
         if event.validation_result is not None and not event.validation_result.is_valid:
@@ -58,8 +64,8 @@ class UnravelApp(App):
         page = requests.get(url)
         selector = parsel.Selector(page.text)
 
-        all_urls = selector.css("script::attr(src), link[rel=stylesheet]::attr(href)").extract()
-        external_urls = [url for url in all_urls if url.startswith("http") or url.startswith("//")]
+        page_urls = selector.css("script::attr(src), link[rel=stylesheet]::attr(href)").extract()
+        external_urls = [url for url in page_urls if url.startswith("http") or url.startswith("//")]
 
         tree = self.query_one("#tree")
         tree.reset(url, {"is_root": True, "source_url": url})
@@ -96,6 +102,9 @@ class UnravelApp(App):
         output_el = self.query_one("#app__output")
         output_el.remove_class("hide")
 
+        tree.select_node(tree.root)
+        tree.action_select_cursor()
+
     @on(Tree.NodeSelected)
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         node = event.node
@@ -103,8 +112,7 @@ class UnravelApp(App):
 
         if node.data.get("is_root", False):
             markdown = textwrap.dedent(f"""
-            # {self.TITLE}
-            {node.data['source_url']}
+            # {node.data['source_url']}
             """)
         else:
             node_url = f"{node.data['protocol']}{node.data['path']}"
